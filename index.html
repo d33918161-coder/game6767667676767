@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Неоновый Кликер с Магазином</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        /* Neon glow effects */
+        .neon-glow-cyan {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.6), inset 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+        .neon-glow-purple {
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), inset 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+        .text-glow {
+            text-shadow: 0 0 12px rgba(6, 182, 212, 0.9), 0 0 24px rgba(6, 182, 212, 0.5);
+        }
+
+        /* Floating text animation for click gains */
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-90px) scale(1.4);
+            }
+        }
+        .floating-text {
+            animation: floatUp 0.8s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* Custom smooth scale transition on click */
+        .click-transform {
+            transition: transform 0.08s ease-in-out;
+        }
+        .click-transform:active {
+            transform: scale(0.88);
+        }
+
+        /* Custom scrollbar for shop */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(6, 182, 212, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white h-[100dvh] w-screen flex flex-col justify-between items-center select-none relative overflow-hidden">
+
+    <div class="absolute top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Top Section: Score & Level -->
+    <header class="w-full pt-3 px-4 flex flex-col items-center z-10">
+        <div class="bg-slate-900/90 border border-cyan-500/40 backdrop-blur-md rounded-2xl px-5 py-2.5 w-full max-w-sm text-center neon-glow-cyan relative">
+            <div class="flex justify-between items-center mb-0.5">
+                <span id="levelDisplay" class="text-xs uppercase tracking-widest text-cyan-400 font-bold">Уровень 1</span>
+                <span id="levelProgressText" class="text-[10px] text-slate-400">0 / 10 кликов</span>
+            </div>
+            
+            <div id="coinDisplay" class="text-2xl md:text-3xl font-black text-glow tracking-wide my-0.5">0 МОНЕТ</div>
+            
+            <!-- Click power indicator -->
+            <div class="text-[11px] text-purple-400 mt-0.5 tracking-wide font-semibold">
+                Сила клика: <span id="clickPowerDisplay" class="text-cyan-300 font-bold">+1</span> | Автокликер: <span id="autoClickDisplay" class="text-purple-300 font-bold">0/сек</span>
+            </div>
+
+            <!-- Progress bar to next level -->
+            <div class="w-full bg-slate-800 h-2 rounded-full mt-2 overflow-hidden border border-cyan-500/20 relative">
+                <div id="progressBar" class="bg-gradient-to-r from-cyan-500 to-purple-500 h-full w-0 transition-all duration-200"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col justify-center items-center relative z-10 w-full px-4 my-auto">
+        <div id="clickArea" class="relative group cursor-pointer">
+            <!-- Pulsing outer ring -->
+            <div class="absolute -inset-6 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full blur-xl opacity-40 group-hover:opacity-80 transition duration-500 animate-pulse"></div>
+            
+            <!-- Main circular button -->
+            <button id="characterBtn" class="relative w-48 h-48 md:w-56 md:h-56 rounded-full bg-gradient-to-b from-slate-900 to-slate-950 border-4 border-cyan-400 neon-glow-cyan flex flex-col items-center justify-center overflow-hidden click-transform shadow-2xl focus:outline-none">
+                <img src="https://p16-common-sign.tiktokcdn-us.com/tos-no1a-avt-0068c001-no/3effdda4d8b99b157cf57e01524e435f~tplv-tiktokx-cropcenter:720:720.jpeg?dr=9640&refresh_token=8479a490&x-expires=1791709200&x-signature=Mhm4KzHqjJZePy%2BZgtROz%2B1S5YY%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=useast8" 
+                     alt="Персонаж" 
+                     class="w-full h-full object-cover rounded-full pointer-events-none drop-shadow-[0_0_15px_rgba(6,182,212,0.9)]"
+                     onerror="this.src='https://placehold.co/240x240/0f172a/06b6d4?text=CHARACTER'">
+            </button>
+        </div>
+        
+        <!-- Max Level Notification Badge (Hidden by default) -->
+        <div id="maxLevelBadge" class="hidden mt-3 bg-purple-950/80 border border-purple-500 text-purple-300 text-xs px-4 py-2 rounded-xl neon-glow-purple animate-bounce">
+            🎉 ДОСТИГНУТ МАКСИМАЛЬНЫЙ УРОВЕНЬ (10,000)!
+        </div>
+    </main>
+
+    <footer class="w-full bg-slate-900/95 border-t border-cyan-500/30 backdrop-blur-md p-3 z-20 flex flex-col max-h-[38vh]">
+        <div class="flex justify-between items-center mb-2 px-1">
+            <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">🛒 Магазин улучшений</span>
+            <span class="text-[10px] text-slate-400">Автосохранение включено</span>
+        </div>
+
+        <!-- Shop Items Grid -->
+        <div id="shopContainer" class="overflow-y-auto space-y-2 pr-1 flex-1">
+            
+            <!-- Upgrade Item 1: Click Power -->
+            <div class="bg-slate-950/80 border border-cyan-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-xs text-white truncate">Мощный клик</h4>
+                        <span id="up1Level" class="text-[10px] font-bold text-purple-400 bg-purple-950/80 border border-purple-500/40 px-1.5 py-0.5 rounded">Ур. 0</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5">+1 монета за клик</p>
+                    <span id="up1Cost" class="text-[11px] font-bold text-cyan-300">200 монет</span>
+                </div>
+                <button id="buyUp1" class="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-[0_0_10px_rgba(6,182,212,0.3)] shrink-0">
+                    Купить
+                </button>
+            </div>
+
+            <!-- Upgrade Item 2: Auto Clicker Bot -->
+            <div class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-xs text-white truncate">Неоновый Бот</h4>
+                        <span id="up2Level" class="text-[10px] font-bold text-purple-400 bg-purple-950/80 border border-purple-500/40 px-1.5 py-0.5 rounded">Ур. 0</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5">+1 монета каждую секунду</p>
+                    <span id="up2Cost" class="text-[11px] font-bold text-cyan-300">500 монет</span>
+                </div>
+                <button id="buyUp2" class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-[0_0_10px_rgba(168,85,247,0.3)] shrink-0">
+                    Купить
+                </button>
+            </div>
+
+            <!-- Upgrade Item 3: Super Multiplier -->
+            <div class="bg-slate-950/80 border border-cyan-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-xs text-white truncate">Квантовый Усилитель</h4>
+                        <span id="up3Level" class="text-[10px] font-bold text-purple-400 bg-purple-950/80 border border-purple-500/40 px-1.5 py-0.5 rounded">Ур. 0</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5">+5 монет за клик</p>
+                    <span id="up3Cost" class="text-[11px] font-bold text-cyan-300">2,500 монет</span>
+                </div>
+                <button id="buyUp3" class="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-[0_0_10px_rgba(6,182,212,0.3)] shrink-0">
+                    Купить
+                </button>
+            </div>
+
+            <!-- Upgrade Item 4: Mega Bot Turbo -->
+            <div class="bg-slate-950/80 border border-purple-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="font-bold text-xs text-white truncate">Турбо Бот Матрица</h4>
+                        <span id="up4Level" class="text-[10px] font-bold text-purple-400 bg-purple-950/80 border border-purple-500/40 px-1.5 py-0.5 rounded">Ур. 0</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5">+10 монет каждую секунду</p>
+                    <span id="up4Cost" class="text-[11px] font-bold text-cyan-300">10,000 монет</span>
+                </div>
+                <button id="buyUp4" class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-[0_0_10px_rgba(168,85,247,0.3)] shrink-0">
+                    Купить
+                </button>
+            </div>
+
+        </div>
+    </footer>
+
+    <script>
+        // Game State Variables
+        let coins = 0;
+        let level = 1;
+        let currentLevelClicks = 0;
+        let clickPower = 1;
+        let autoClickPower = 0;
+        const maxLevel = 10000;
+
+        // Upgrade States
+        const upgrades = {
+            up1: { level: 0, cost: 200, powerAdd: 1, costMultiplier: 1.6 },
+            up2: { level: 0, cost: 500, autoAdd: 1, costMultiplier: 1.65 },
+            up3: { level: 0, cost: 2500, powerAdd: 5, costMultiplier: 1.7 },
+            up4: { level: 0, cost: 10000, autoAdd: 10, costMultiplier: 1.75 }
+        };
+
+        // DOM Elements
+        const coinDisplay = document.getElementById('coinDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const levelProgressText = document.getElementById('levelProgressText');
+        const progressBar = document.getElementById('progressBar');
+        const characterBtn = document.getElementById('characterBtn');
+        const maxLevelBadge = document.getElementById('maxLevelBadge');
+        const clickPowerDisplay = document.getElementById('clickPowerDisplay');
+        const autoClickDisplay = document.getElementById('autoClickDisplay');
+
+        // Shop DOM elements
+        const up1LevelEl = document.getElementById('up1Level');
+        const up1CostEl = document.getElementById('up1Cost');
+        const buyUp1Btn = document.getElementById('buyUp1');
+
+        const up2LevelEl = document.getElementById('up2Level');
+        const up2CostEl = document.getElementById('up2Cost');
+        const buyUp2Btn = document.getElementById('buyUp2');
+
+        const up3LevelEl = document.getElementById('up3Level');
+        const up3CostEl = document.getElementById('up3Cost');
+        const buyUp3Btn = document.getElementById('buyUp3');
+
+        const up4LevelEl = document.getElementById('up4Level');
+        const up4CostEl = document.getElementById('up4Cost');
+        const buyUp4Btn = document.getElementById('buyUp4');
+
+        // Load progress from localStorage
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('neon_clicker_save');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    coins = data.coins || 0;
+                    level = data.level || 1;
+                    currentLevelClicks = data.currentLevelClicks || 0;
+                    clickPower = data.clickPower || 1;
+                    autoClickPower = data.autoClickPower || 0;
+
+                    if (data.upgrades) {
+                        for (let key in data.upgrades) {
+                            if (upgrades[key] && data.upgrades[key]) {
+                                upgrades[key].level = data.upgrades[key].level || 0;
+                                upgrades[key].cost = data.upgrades[key].cost || upgrades[key].cost;
+                            }
+                        }
+                    }
+
+                    if (level >= maxLevel) {
+                        maxLevelBadge.classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                console.error("Ошибка загрузки сохранения:", e);
+            }
+        }
+
+        // Save progress to localStorage
+        function saveGame() {
+            try {
+                const saveData = {
+                    coins,
+                    level,
+                    currentLevelClicks,
+                    clickPower,
+                    autoClickPower,
+                    upgrades: {
+                        up1: { level: upgrades.up1.level, cost: upgrades.up1.cost },
+                        up2: { level: upgrades.up2.level, cost: upgrades.up2.cost },
+                        up3: { level: upgrades.up3.level, cost: upgrades.up3.cost },
+                        up4: { level: upgrades.up4.level, cost: upgrades.up4.cost }
+                    }
+                };
+                localStorage.setItem('neon_clicker_save', JSON.stringify(saveData));
+            } catch (e) {
+                console.error("Ошибка сохранения:", e);
+            }
+        }
+
+        // Required clicks formula for levels
+        function getClicksRequiredForLevel(lvl) {
+            return 5 + (lvl * 5);
+        }
+
+        // Handle user clicks on character
+        function handleClick(e) {
+            coins += clickPower;
+
+            if (level < maxLevel) {
+                currentLevelClicks += 1;
+                const requiredClicks = getClicksRequiredForLevel(level);
+
+                if (currentLevelClicks >= requiredClicks) {
+                    level++;
+                    currentLevelClicks = 0;
+
+                    if (level >= maxLevel) {
+                        level = maxLevel;
+                        maxLevelBadge.classList.remove('hidden');
+                    }
+                }
+            }
+
+            updateUI();
+            saveGame();
+
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            if (clientX && clientY) {
+                createFloatingText(clientX, clientY, `+${clickPower}`);
+            }
+        }
+
+        // Floating particle animation
+        function createFloatingText(x, y, text) {
+            const floatEl = document.createElement('div');
+            floatEl.textContent = text;
+            floatEl.className = 'absolute text-cyan-300 font-black text-xl floating-text z-50 drop-shadow-[0_0_8px_rgba(6,182,212,0.9)]';
+            
+            floatEl.style.left = `${x - 14}px`;
+            floatEl.style.top = `${y - 24}px`;
+            
+            document.body.appendChild(floatEl);
+
+            setTimeout(() => {
+                floatEl.remove();
+            }, 800);
+        }
+
+        // Buy upgrade helper
+        function buyUpgrade(key) {
+            const up = upgrades[key];
+            if (coins >= up.cost) {
+                coins -= up.cost;
+                up.level += 1;
+
+                if (up.powerAdd) clickPower += up.powerAdd;
+                if (up.autoAdd) autoClickPower += up.autoAdd;
+
+                up.cost = Math.floor(up.cost * up.costMultiplier);
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Auto-clicker loop running every second
+        setInterval(() => {
+            if (autoClickPower > 0) {
+                coins += autoClickPower;
+                updateUI();
+                saveGame();
+            }
+        }, 1000);
+
+        // Update all UI elements and shop button states
+        function updateUI() {
+            coinDisplay.textContent = `${coins.toLocaleString()} МОНЕТ`;
+            levelDisplay.textContent = `Уровень ${level.toLocaleString()}`;
+            clickPowerDisplay.textContent = `+${clickPower}`;
+            autoClickDisplay.textContent = `${autoClickPower}/сек`;
+
+            if (level < maxLevel) {
+                const requiredClicks = getClicksRequiredForLevel(level);
+                levelProgressText.textContent = `${currentLevelClicks} / ${requiredClicks} кликов`;
+                const progressPercent = (currentLevelClicks / requiredClicks) * 100;
+                progressBar.style.width = `${progressPercent}%`;
+            } else {
+                levelProgressText.textContent = `МАКСИМУМ`;
+                progressBar.style.width = `100%`;
+            }
+
+            // Upgrades UI update
+            up1LevelEl.textContent = `Ур. ${upgrades.up1.level}`;
+            up1CostEl.textContent = `${upgrades.up1.cost.toLocaleString()} монет`;
+            buyUp1Btn.disabled = coins < upgrades.up1.cost;
+
+            up2LevelEl.textContent = `Ур. ${upgrades.up2.level}`;
+            up2CostEl.textContent = `${upgrades.up2.cost.toLocaleString()} монет`;
+            buyUp2Btn.disabled = coins < upgrades.up2.cost;
+
+            up3LevelEl.textContent = `Ур. ${upgrades.up3.level}`;
+            up3CostEl.textContent = `${upgrades.up3.cost.toLocaleString()} монет`;
+            buyUp3Btn.disabled = coins < upgrades.up3.cost;
+
+            up4LevelEl.textContent = `Ур. ${upgrades.up4.level}`;
+            up4CostEl.textContent = `${upgrades.up4.cost.toLocaleString()} монет`;
+            buyUp4Btn.disabled = coins < upgrades.up4.cost;
+        }
+
+        // Event Listeners
+        characterBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            handleClick(e);
+        });
+
+        buyUp1Btn.addEventListener('click', () => buyUpgrade('up1'));
+        buyUp2Btn.addEventListener('click', () => buyUpgrade('up2'));
+        buyUp3Btn.addEventListener('click', () => buyUpgrade('up3'));
+        buyUp4Btn.addEventListener('click', () => buyUpgrade('up4'));
+
+        // Load saved progress and initialize UI on start
+        loadGame();
+        updateUI();
+    </script>
+</body>
+</html>
